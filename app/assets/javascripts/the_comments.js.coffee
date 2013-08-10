@@ -6,10 +6,10 @@
   error_msgs
 
 # FORM CLEANER
-@clear_comment_form = ->
-  $('.error_notifier', '#new_comment, .comments_tree').hide()
-  $("input[name='comment[title]']").val('')
-  $("textarea[name='comment[raw_content]']").val('')
+@clear_comment_form = (form) ->
+  form.find('.error_notifier', '[role=new_comment_form], .comments_tree').hide()
+  form.find("input[name='comment[title]']").val('')
+  form.find("textarea[name='comment[raw_content]']").val('')
 
 # NOTIFIER
 @comments_error_notifier = (form, text) ->
@@ -27,12 +27,14 @@
 $ ->
   window.tolerance_time_start = unixsec(new Date)
 
-  comment_forms  = "#new_comment, .reply_comments_form"
+  comments_block = '[role=comments_block]'
+  comment_forms  = $("[role=new_comment_form], .reply_comments_form")
   tolerance_time = $('[data-comments-tolarance-time]').first().data('comments-tolarance-time')
 
   # Button Click => AJAX Before Send
-  submits = '#new_comment input[type=submit], .reply_comments_form input[type=submit]'
-  $(document).on 'click', submits, (e) ->
+  submits = $('[role=new_comment_form] input[type=submit], .reply_comments_form input[type=submit]')
+  
+  submits.on 'click', (e) ->
     button    = $ e.target
     form      = button.parents('form').first()
     time_diff = unixsec(new Date) - window.tolerance_time_start
@@ -48,25 +50,26 @@ $ ->
     true
 
   # AJAX ERROR
-  $(document).on 'ajax:error', comment_forms, (request, response, status) ->
+  comment_forms.on 'ajax:error', (request, response, status) ->
     form = $ @
     $('input[type=submit]', form).show()
     error_msgs = error_text_builder(["Server Error: #{response.status}"])
     comments_error_notifier(form, error_msgs)
 
   # COMMENT FORMS => SUCCESS
-  $(document).on 'ajax:success', comment_forms, (request, response, status) ->
+  comment_forms.on 'ajax:success', (request, response, status) ->
     form = $ @
+    block = form.parents(comments_block)
+
     $('input[type=submit]', form).show()
 
     if typeof(response) is 'string'
       anchor = $(response).find('.comment').attr('id')
-      clear_comment_form()
-      form.hide()
-      $('.parent_id').val('')
-      $('#new_comment').fadeIn()
+      clear_comment_form form
+      form.find('.parent_id').val('')
+      form.find('[role=new_comment_form]').fadeIn()
       tree = form.parent().siblings('.nested_set')
-      tree = $('ol.comments_tree') if tree.length is 0
+      tree = block.find('ol.comments_tree') if tree.length is 0
       tree.append(response)
       document.location.hash = anchor
     else
@@ -74,22 +77,23 @@ $ ->
       comments_error_notifier(form, error_msgs)
 
   # NEW ROOT BUTTON
-  $(document).on 'click', '#new_root_comment', ->
+  $('#new_root_comment').on 'click', ->
     $('.reply_comments_form').hide()
     $('.parent_id').val('')
-    $('#new_comment').fadeIn()
+    $('[role=new_comment_form]').fadeIn()
     false
 
   # REPLY BUTTON
-  $(document).on 'click', '.reply_link', ->
+  $('.reply_link').on 'click', ->
     link    = $ @
-    comment = link.parent().parent().parent()
-  
-    $(comment_forms).hide()
-    form = $('#new_comment').clone().removeAttr('id').addClass('reply_comments_form')
+    comment = link.parents('.comment')
+    block = link.parents(comments_block)
+
+    comment_forms.hide()
+    form = block.find('[role=new_comment_form]').clone().removeAttr('id').addClass('reply_comments_form')
 
     comment_id = comment.data('comment-id')
-    $('.parent_id', form).val comment_id
+    block.find('.parent_id', form).val comment_id
 
     comment.siblings('.form_holder').html(form)
     form.fadeIn()

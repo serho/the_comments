@@ -1,7 +1,7 @@
 %h3
   = link_to 'New Comment', '#', id: :new_root_comment
 
-= form_for Comment.new, remote: true, authenticity_token: true do |f|
+= form_for Comment.new, remote: true, authenticity_token: true, html: { role: 'new_comment_form' } do |f|
   .error_notifier{ style: "display:none" }
   %label title:
   %p= f.text_field :title
